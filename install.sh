@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Install required packages
-sudo pacman -Syu git firefox lxappearance feh kitty xorg-server xorg-xinit xorg-xrandr base-devel libx11 libxinerama libxft webkit2gtk --noconfirm
+sudo pacman -Syu git firefox zoxide lxappearance feh kitty xorg-server xorg-xinit xorg-xrandr base-devel libx11 libxinerama libxft webkit2gtk --noconfirm
 
 # Clone yay from AUR
 cd ~

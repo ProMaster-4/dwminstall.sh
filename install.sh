@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Install required packages
-sudo pacman -Syu git feh kitty xorg-server xorg-xinit xorg-xrandr base-devel libx11 libxinerama libxft webkit2gtk --noconfirm
+sudo pacman -Syu git firefox lxappearance feh kitty xorg-server xorg-xinit xorg-xrandr base-devel libx11 libxinerama libxft webkit2gtk --noconfirm
 
 # Clone yay from AUR
 cd ~
@@ -10,6 +10,9 @@ cd yay-git
 makepkg -si --noconfirm
 cd ~
 sudo rm -r yay-git
+
+# Install xcursor-breeze package with yay
+yay -S --noconfirm xcursor-breeze
 
 # Clone dwm, dmenu, and dotfiles repositories
 git clone https://github.com/ProMaster-4/dwm

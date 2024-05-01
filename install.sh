@@ -35,7 +35,7 @@ if ! [[ "$refresh_rate" =~ ^[0-9]+$ ]]; then
 fi
 
 # List of required packages
-packages=("git" "firefox" "zoxide" "picom" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk")
+packages=("git" "firefox" "zoxide" "picom" "starship" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk")
 
 # Install required packages if not already installed
 for pkg in "${packages[@]}"; do

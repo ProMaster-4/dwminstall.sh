@@ -1,94 +1,78 @@
 #!/bin/bash
 
-# Prompt for desired resolution
+# Define resolutions
+resolutions=("1280x720" "1920x1080" "2560x1440" "3840x2160")
+
+# Prompt for resolution choice
 echo "Choose your desired resolution:"
-echo "1. 720p (1280x720)"
-echo "2. 1080p (1920x1080)"
-echo "3. 1440p (2560x1440)"
-echo "4. 2160p (3840x2160)"
+for ((i=0; i<${#resolutions[@]}; i++)); do
+    echo "$(($i+1)). ${resolutions[$i]}"
+done
 read -p "Enter the corresponding number for your resolution: " resolution_choice
 
-case $resolution_choice in
-    1)
-        resolution="1280x720"
-        ;;
-    2)
-        resolution="1920x1080"
-        ;;
-    3)
-        resolution="2560x1440"
-        ;;
-    4)
-        resolution="3840x2160"
-        ;;
-    *)
-        echo "Invalid choice. Defaulting to 1080p."
-        resolution="1920x1080"
-        ;;
-esac
+# Validate resolution choice
+if ((resolution_choice < 1 || resolution_choice > ${#resolutions[@]})); then
+    echo "Invalid choice. Defaulting to 1080p."
+    resolution="1920x1080"
+else
+    resolution="${resolutions[$(($resolution_choice-1))]}"
+fi
 
-# Prompt for desired refresh rate
+# Prompt for refresh rate
 read -p "Enter desired refresh rate (integer only): " refresh_rate
 if ! [[ "$refresh_rate" =~ ^[0-9]+$ ]]; then
     echo "Error: Refresh rate must be an integer."
     exit 1
 fi
 
-# List of required packages
+# Check if packages are installed
 packages=("git" "firefox" "zoxide" "picom" "starship" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk")
-
-# Install required packages if not already installed
+missing_packages=()
 for pkg in "${packages[@]}"; do
     if ! pacman -Qq "$pkg" &>/dev/null; then
-        sudo pacman -Syu --noconfirm "$pkg"
+        missing_packages+=("$pkg")
     fi
 done
 
-# Clone yay from AUR
-cd ~ || exit
-git clone https://aur.archlinux.org/yay-git.git
-cd yay-git || exit
-makepkg -si --noconfirm
-cd ~ || exit
-sudo rm -r yay-git
+# Install missing packages
+if [[ ${#missing_packages[@]} -gt 0 ]]; then
+    sudo pacman -Syu --noconfirm "${missing_packages[@]}"
+fi
+
+# Install yay if not installed
+if ! command -v yay &>/dev/null; then
+    git clone https://aur.archlinux.org/yay-git.git ~/yay-git
+    (cd ~/yay-git && makepkg -si --noconfirm)
+    rm -rf ~/yay-git
+fi
 
 # Install xcursor-breeze package with yay if not already installed
 if ! yay -Qq xcursor-breeze &>/dev/null; then
     yay -S --noconfirm xcursor-breeze
 fi
 
-# Clone dwm, dmenu, and dotfiles repositories
-git clone https://github.com/ProMaster-4/dwm
-git clone https://git.suckless.org/dmenu
-git clone https://github.com/ProMaster-4/dotfiles
+# Clone repositories
+git clone https://github.com/ProMaster-4/dwm ~/dwm
+git clone https://git.suckless.org/dmenu ~/dmenu
+git clone https://github.com/ProMaster-4/dotfiles ~/dotfiles
 
-# Replace refresh rate in dwm config.h
-if grep -q "static const unsigned int refresh_rate    = 60;" ~/dwm/config.h; then
-    sed -i "s/static const unsigned int refresh_rate    = 60;/static const unsigned int refresh_rate    = $refresh_rate;/g" ~/dwm/config.h
-fi
+# Update refresh rate in dwm config.h
+sed -i "s/static const unsigned int refresh_rate    = 60;/static const unsigned int refresh_rate    = $refresh_rate;/g" ~/dwm/config.h
 
-# Compile and install dwm
-cd ~/dwm || exit
-sudo make clean install
-
-# Compile and install dmenu
-cd ~/dmenu || exit
-sudo make clean install
+# Compile and install dwm and dmenu
+for dir in ~/dwm ~/dmenu; do
+    (cd "$dir" && sudo make clean install)
+done
 
 # Copy dotfiles to home directory
-cd ~/dotfiles || exit
-cp -r . ~
+cp -r ~/dotfiles/. ~
 
 # Modify .xinitrc to include resolution and refresh rate
 xinitrc_path="$HOME/.xinitrc"
 temp_file=$(mktemp)
-echo "xrandr -s $resolution -r $refresh_rate" > "$temp_file"
+echo "xrandr --auto --output $(xrandr | awk '/ connected/ {print $1}') --mode $resolution --rate $refresh_rate" > "$temp_file"
 cat "$xinitrc_path" >> "$temp_file"
 mv "$temp_file" "$xinitrc_path"
-
-# Clean up dotfiles directory
-cd ~ || exit
-rm -rf dotfiles
 
 # Prompt to reboot
 read -p "Do you want to reboot now? (y/n): " reboot_choice

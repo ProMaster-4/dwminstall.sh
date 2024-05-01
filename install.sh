@@ -66,6 +66,7 @@ done
 
 # Copy dotfiles to home directory
 cp -r ~/dotfiles/. ~
+sudo rm -r ~/.git
 
 # Modify .xinitrc to include resolution and refresh rate
 xinitrc_path="$HOME/.xinitrc"

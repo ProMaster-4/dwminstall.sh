@@ -1,79 +1,96 @@
 #!/bin/bash
 
-# Install yay if not installed
-if ! command -v yay &>/dev/null; then
-    git clone https://aur.archlinux.org/yay-git.git ~/yay-git
-    (cd ~/yay-git && makepkg -si --noconfirm)
-    rm -rf ~/yay-git
-fi
-
-# Define resolutions
-resolutions=("1280x720" "1920x1080" "2560x1440" "3840x2160")
-
-# Prompt for resolution choice
-echo "Choose your desired resolution:"
-for ((i=0; i<${#resolutions[@]}; i++)); do
-    echo "$(($i+1)). ${resolutions[$i]}"
-done
-read -p "Enter the corresponding number for your resolution: " resolution_choice
-
-# Validate resolution choice
-if ((resolution_choice < 1 || resolution_choice > ${#resolutions[@]})); then
-    echo "Invalid choice. Defaulting to 1080p."
-    resolution="1920x1080"
-else
-    resolution="${resolutions[$(($resolution_choice-1))]}"
-fi
-
-# Prompt for refresh rate
-read -p "Enter desired refresh rate (integer only): " refresh_rate
-if ! [[ "$refresh_rate" =~ ^[0-9]+$ ]]; then
-    echo "Error: Refresh rate must be an integer."
-    exit 1
-fi
-
-# Check if packages are installed
-packages=("git" "firefox" "noto-fonts-cjk" "noto-fonts-emoji" "discord_arch_electron" "zoxide" "picom" "starship" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk" "xcursor-breeze")
-missing_packages=()
-for pkg in "${packages[@]}"; do
-    if ! yay -Qq "$pkg" &>/dev/null; then
-        missing_packages+=("$pkg")
+# Function to check and install yay
+install_yay() {
+    if ! command -v yay &>/dev/null; then
+        git clone https://aur.archlinux.org/yay-git.git ~/yay-git &&
+        (cd ~/yay-git && makepkg -si --noconfirm) &&
+        rm -rf ~/yay-git ||
+        { echo "Failed to install yay. Exiting."; exit 1; }
     fi
-done
+}
 
-# Install missing packages
-if [[ ${#missing_packages[@]} -gt 0 ]]; then
-    yay -Syu --noconfirm "${missing_packages[@]}"
-fi
+# Function to prompt for resolution choice
+prompt_resolution_choice() {
+    echo "Choose your desired resolution:"
+    for ((i=0; i<${#resolutions[@]}; i++)); do
+        echo "$(($i+1)). ${resolutions[$i]}"
+    done
+    read -p "Enter the corresponding number for your resolution: " resolution_choice
+    resolution="${resolutions[$(($resolution_choice-1))]:-"1920x1080"}"
+}
 
-# Clone repositories
-git clone https://github.com/ProMaster-4/dwm ~/dwm
-git clone https://git.suckless.org/dmenu ~/dmenu
-git clone https://github.com/ProMaster-4/dotfiles ~/dotfiles
+# Function to prompt for refresh rate
+prompt_refresh_rate() {
+    read -p "Enter desired refresh rate (integer only): " refresh_rate
+    if ! [[ "$refresh_rate" =~ ^[0-9]+$ ]]; then
+        echo "Error: Refresh rate must be an integer."
+        exit 1
+    fi
+}
 
-# Update refresh rate in dwm config.h
-sed -i "s/static const unsigned int refresh_rate    = 60;/static const unsigned int refresh_rate    = $refresh_rate;/g" ~/dwm/config.h
+# Function to install missing packages
+install_missing_packages() {
+    local missing_packages=()
+    for pkg in "${packages[@]}"; do
+        yay -Qq "$pkg" &>/dev/null || missing_packages+=("$pkg")
+    done
 
-# Compile and install dwm and dmenu
-for dir in ~/dwm ~/dmenu; do
-    (cd "$dir" && sudo make clean install)
-done
+    [[ ${#missing_packages[@]} -gt 0 ]] && 
+    yay -Syu --noconfirm "${missing_packages[@]}" ||
+    { echo "Failed to install missing packages. Exiting."; exit 1; }
+}
 
-# Copy dotfiles to home directory
-cp -r ~/dotfiles/. ~
-sudo rm -r ~/.git
+# Function to clone repositories
+clone_repositories() {
+    git clone https://github.com/ProMaster-4/dwm ~/dwm &&
+    git clone https://git.suckless.org/dmenu ~/dmenu &&
+    git clone https://github.com/ProMaster-4/dotfiles ~/dotfiles ||
+    { echo "Failed to clone repositories. Exiting."; exit 1; }
+}
 
-# Modify .xinitrc to include resolution and refresh rate
-xinitrc_path="$HOME/.xinitrc"
-temp_file=$(mktemp)
-echo "xrandr --auto --output $(xrandr | awk '/ connected/ {print $1}') --mode $resolution --rate $refresh_rate" > "$temp_file"
-cat "$xinitrc_path" >> "$temp_file"
-mv "$temp_file" "$xinitrc_path"
+# Function to update refresh rate in dwm config.h
+update_refresh_rate() {
+    sed -i "s/static const unsigned int refresh_rate    = 60;/static const unsigned int refresh_rate    = $refresh_rate;/g" ~/dwm/config.h ||
+    { echo "Failed to update refresh rate in dwm config.h. Exiting."; exit 1; }
+}
 
-# Prompt to reboot
-read -p "Do you want to reboot now? (y/n): " reboot_choice
-if [[ $reboot_choice == "y" || $reboot_choice == "Y" ]]; then
-    sudo reboot
-else
-    echo "Please remember to reboot to apply changes."
-fi
+# Function to compile and install dwm and dmenu
+compile_and_install() {
+    for dir in ~/dwm ~/dmenu; do
+        (cd "$dir" && sudo make clean install) ||
+        { echo "Failed to compile and install $dir. Exiting."; exit 1; }
+    done
+}
+
+# Function to modify .xinitrc to include resolution and refresh rate
+modify_xinitrc() {
+    xinitrc_path="$HOME/.xinitrc"
+    temp_file=$(mktemp)
+    echo "xrandr --auto --output $(xrandr | awk '/ connected/ {print $1}') --mode $resolution --rate $refresh_rate" > "$temp_file"
+    cat "$xinitrc_path" >> "$temp_file"
+    mv "$temp_file" "$xinitrc_path" ||
+    { echo "Failed to modify .xinitrc. Exiting."; exit 1; }
+}
+
+# Function to prompt for reboot
+prompt_reboot() {
+    read -p "Do you want to reboot now? (y/n): " reboot_choice
+    [[ $reboot_choice == "y" || $reboot_choice == "Y" ]] && sudo reboot
+}
+
+# Main script
+install_yay || exit 1
+resolutions=("1280x720" "1920x1080" "2560x1440" "3840x2160")
+prompt_resolution_choice
+prompt_refresh_rate || exit 1
+packages=("git" "firefox" "noto-fonts-cjk" "noto-fonts-emoji" "discord_arch_electron" "zoxide" "picom" "starship" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk" "xcursor-breeze")
+install_missing_packages || exit 1
+clone_repositories || exit 1
+update_refresh_rate || exit 1
+compile_and_install || exit 1
+cp -r ~/dotfiles/. ~ && sudo rm -r ~/.git ||
+{ echo "Failed to copy dotfiles. Exiting."; exit 1; }
+modify_xinitrc || exit 1
+prompt_reboot || exit 1
+echo "Please remember to reboot to apply changes."

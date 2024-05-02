@@ -33,12 +33,19 @@ prompt_refresh_rate() {
 install_missing_packages() {
     local missing_packages=()
     for pkg in "${packages[@]}"; do
-        yay -Qq "$pkg" &>/dev/null || missing_packages+=("$pkg")
+        if ! yay -Qq "$pkg" &>/dev/null; then
+            missing_packages+=("$pkg")
+        fi
     done
 
-    [[ ${#missing_packages[@]} -gt 0 ]] && 
-    yay -Syu --noconfirm "${missing_packages[@]}" ||
-    { echo "Failed to install missing packages. Exiting."; exit 1; }
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        if yay -Syu --noconfirm "${missing_packages[@]}"; then
+            echo "Successfully installed missing packages: ${missing_packages[*]}"
+        else
+            echo "Failed to install missing packages: ${missing_packages[*]}"
+            exit 1
+        fi
+    fi
 }
 
 # Function to clone repositories

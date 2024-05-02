@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Install yay if not installed
+if ! command -v yay &>/dev/null; then
+    git clone https://aur.archlinux.org/yay-git.git ~/yay-git
+    (cd ~/yay-git && makepkg -si --noconfirm)
+    rm -rf ~/yay-git
+fi
+
 # Define resolutions
 resolutions=("1280x720" "1920x1080" "2560x1440" "3840x2160")
 
@@ -26,29 +33,17 @@ if ! [[ "$refresh_rate" =~ ^[0-9]+$ ]]; then
 fi
 
 # Check if packages are installed
-packages=("git" "firefox" "zoxide" "picom" "starship" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk")
+packages=("git" "firefox" "noto-fonts-cjk" "noto-fonts-emoji" "discord_arch_electron" "zoxide" "picom" "starship" "lxappearance" "feh" "kitty" "xorg-server" "xorg-xinit" "xorg-xrandr" "base-devel" "libx11" "libxinerama" "libxft" "webkit2gtk" "xcursor-breeze")
 missing_packages=()
 for pkg in "${packages[@]}"; do
-    if ! pacman -Qq "$pkg" &>/dev/null; then
+    if ! yay -Qq "$pkg" &>/dev/null; then
         missing_packages+=("$pkg")
     fi
 done
 
 # Install missing packages
 if [[ ${#missing_packages[@]} -gt 0 ]]; then
-    sudo pacman -Syu --noconfirm "${missing_packages[@]}"
-fi
-
-# Install yay if not installed
-if ! command -v yay &>/dev/null; then
-    git clone https://aur.archlinux.org/yay-git.git ~/yay-git
-    (cd ~/yay-git && makepkg -si --noconfirm)
-    rm -rf ~/yay-git
-fi
-
-# Install xcursor-breeze package with yay if not already installed
-if ! yay -Qq xcursor-breeze &>/dev/null; then
-    yay -S --noconfirm xcursor-breeze
+    yay -Syu --noconfirm "${missing_packages[@]}"
 fi
 
 # Clone repositories
